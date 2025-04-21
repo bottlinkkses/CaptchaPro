@@ -1,1 +1,242 @@
-STOPPED!
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Captcha Earn Pro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1f1c2c, #928dab);
+      color: #fff;
+      animation: fadeIn 1s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .container {
+      max-width: 400px;
+      margin: auto;
+      padding: 25px;
+    }
+
+    .box {
+      background: rgba(255,255,255,0.08);
+      border-radius: 15px;
+      padding: 20px;
+      margin-top: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+      animation: pop 0.6s ease;
+    }
+
+    @keyframes pop {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    input {
+      background: #f1f1f1;
+      color: #000;
+    }
+
+    button {
+      background: #00d2ff;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    button:hover {
+      background: #007aff;
+    }
+
+    .captcha-img {
+      background: #fff;
+      color: #000;
+      font-weight: bold;
+      font-size: 28px;
+      letter-spacing: 3px;
+      text-align: center;
+      border-radius: 10px;
+      margin: 15px 0;
+      padding: 12px;
+      user-select: none;
+    }
+
+    .hidden { display: none; }
+
+    .success {
+      color: #00ff99;
+      font-weight: bold;
+    }
+
+    .small-text {
+      text-align: center;
+      cursor: pointer;
+      margin-top: 10px;
+      font-size: 14px;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="authBox" class="box">
+      <h2 id="authTitle">Login</h2>
+      <input type="text" id="username" placeholder="Username">
+      <input type="password" id="password" placeholder="Password">
+      <button onclick="authAction()">Login</button>
+      <p class="small-text" onclick="toggleAuth()">or Register</p>
+    </div>
+
+    <div id="dashboard" class="box hidden">
+      <h2>Welcome, <span id="userDisplay"></span></h2>
+      <p><b>Balance:</b> ₹<span id="balance">0</span></p>
+
+      <div id="captchaSection">
+        <div class="captcha-img" id="captchaDisplay">AB12C</div>
+        <input type="text" id="captchaInput" placeholder="Enter above CAPTCHA">
+        <button onclick="verifyCaptcha()">Submit CAPTCHA</button>
+      </div>
+
+      <h3 style="margin-top:20px;">Withdraw</h3>
+      <input type="text" id="upi" placeholder="Enter UPI ID">
+      <input type="number" id="amount" placeholder="Min ₹1000">
+      <button onclick="withdraw()">Withdraw</button>
+
+      <h3 style="margin-top:20px;">Withdraw History</h3>
+      <div id="history"></div>
+    </div>
+  </div>
+
+  <script>
+    let users = JSON.parse(localStorage.getItem("users")) || {};
+    let currentUser = localStorage.getItem("currentUser");
+    let currentCaptcha = '';
+
+    const captchaDisplay = document.getElementById("captchaDisplay");
+
+    function generateCaptcha() {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      currentCaptcha = "";
+      for (let i = 0; i < 5; i++) {
+        currentCaptcha += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      captchaDisplay.innerText = currentCaptcha;
+    }
+
+    function verifyCaptcha() {
+      const input = document.getElementById("captchaInput").value.trim().toUpperCase();
+      if (input === currentCaptcha) {
+        users[currentUser].balance += 50;
+        localStorage.setItem("users", JSON.stringify(users));
+        updateBalance();
+        alert("Correct! ₹50 added.");
+        document.getElementById("captchaInput").value = '';
+        generateCaptcha();
+      } else {
+        alert("Incorrect CAPTCHA. Try again.");
+      }
+    }
+
+    function authAction() {
+      const user = document.getElementById("username").value.trim();
+      const pass = document.getElementById("password").value;
+      if (!user || !pass) return alert("Fill all fields!");
+
+      if (document.getElementById("authTitle").innerText === "Login") {
+        if (users[user]?.password === pass) {
+          currentUser = user;
+          localStorage.setItem("currentUser", user);
+          showDashboard();
+        } else {
+          alert("Invalid credentials");
+        }
+      } else {
+        if (users[user]) return alert("User already exists!");
+        users[user] = { password: pass, balance: 0, history: [] };
+        localStorage.setItem("users", JSON.stringify(users));
+        alert("Registered! Now login.");
+        toggleAuth();
+      }
+    }
+
+    function toggleAuth() {
+      const title = document.getElementById("authTitle");
+      const btn = document.querySelector("#authBox button");
+      if (title.innerText === "Login") {
+        title.innerText = "Register";
+        btn.innerText = "Register";
+      } else {
+        title.innerText = "Login";
+        btn.innerText = "Login";
+      }
+    }
+
+    function showDashboard() {
+      document.getElementById("authBox").classList.add("hidden");
+      document.getElementById("dashboard").classList.remove("hidden");
+      document.getElementById("userDisplay").innerText = currentUser;
+      generateCaptcha();
+      updateBalance();
+      showHistory();
+    }
+
+    function updateBalance() {
+      document.getElementById("balance").innerText = users[currentUser].balance;
+    }
+
+    function withdraw() {
+      const upi = document.getElementById("upi").value.trim();
+      const amount = parseInt(document.getElementById("amount").value);
+      if (!upi || amount < 1000) return alert("Min ₹1000 & valid UPI required");
+      if (amount > users[currentUser].balance) return alert("Not enough balance");
+
+      users[currentUser].balance -= amount;
+      users[currentUser].history.push({
+        upi,
+        amount,
+        status: "Success",
+        time: new Date().toLocaleString()
+      });
+
+      localStorage.setItem("users", JSON.stringify(users));
+      updateBalance();
+      showHistory();
+      alert("Withdrawal Request Successful");
+    }
+
+    function showHistory() {
+      const histBox = document.getElementById("history");
+      const data = users[currentUser].history;
+
+      histBox.innerHTML = data.map(
+        h => `<p>₹${h.amount} to ${h.upi} - <span class="success">${h.status}</span><br><small>${h.time}</small></p>`
+      ).join("") || "<p>No Withdrawals Yet.</p>";
+    }
+
+    if (currentUser && users[currentUser]) showDashboard();
+  </script>
+</body>
+</html>
+
